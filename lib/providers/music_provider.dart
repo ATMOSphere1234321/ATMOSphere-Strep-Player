@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:just_audio/just_audio.dart';
 import '../models/song.dart';
-import '../services/audio_player_service.dart';
 import '../services/audio_service_integration.dart';
 import '../services/music_service.dart';
 import '../services/song_metadata_service.dart';
@@ -9,7 +9,6 @@ import '../services/song_storage_service.dart';
 import '../services/yt_service_explode.dart';
 
 class MusicProvider extends ChangeNotifier {
-  final AudioPlayerService _audioService = AudioPlayerService();
   final AudioServiceIntegration _audioServiceIntegration = AudioServiceIntegration();
   final MusicService _musicService = MusicService();
   final SongMetadataService _metadataService = SongMetadataService();
@@ -20,17 +19,23 @@ class MusicProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
   StreamSubscription<PlayerState>? _playerStateSubscription;
+  StreamSubscription<Duration>? _positionSubscription;
   bool _disposed = false;
 
   List<Song> get songs => _songs;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
-  AudioPlayerService get audioService => _audioService;
 
-  // The song currently playing in the audio service
-  Song? get currentSong => _audioService.currentSong;
-  PlayerState get playerState => _audioService.playerState;
-  int get currentIndex => _audioService.currentIndex;
+  // Get audio service properties directly from the integration
+  Song? get currentSong => _audioServiceIntegration.currentSong;
+  int get currentIndex => _audioServiceIntegration.currentIndex;
+  List<Song> get playlist => _audioServiceIntegration.playlist;
+  
+  // Player state from the audio service
+  PlayerState get playerState => _audioServiceIntegration.audioPlayer?.playerState ?? PlayerState(false, ProcessingState.idle);
+  Duration get currentPosition => _audioServiceIntegration.audioPlayer?.position ?? Duration.zero;
+  Duration? get totalDuration => _audioServiceIntegration.audioPlayer?.duration;
+  Stream<Duration> get positionStream => _audioServiceIntegration.audioPlayer?.positionStream ?? Stream.value(Duration.zero);
 
   final List<Song> _queue = [];
   int _queueIndex = 0;
@@ -41,23 +46,30 @@ class MusicProvider extends ChangeNotifier {
   Song? get queuedSong => _queue.isNotEmpty ? _queue[_queueIndex] : null;
 
   Future<void> initialize() async {
-    await _audioService.initialize();
-    
     // Initialize audio service integration for notifications and lock screen controls
     await _audioServiceIntegration.initialize();
     
     // Listen to player state changes and notify UI
-    _playerStateSubscription = _audioService.playerStateStream.listen((_) {
-      if (_disposed) return;
+    final audioPlayer = _audioServiceIntegration.audioPlayer;
+    if (audioPlayer != null) {
+      _playerStateSubscription = audioPlayer.playerStateStream.listen((_) {
+        if (_disposed) return;
 
-      // Sync queue index with audio service
-      final current = _audioService.currentSong;
-      final idx = _queue.indexWhere((s) => s.path == current?.path);
-      if (idx != -1 && idx != _queueIndex) {
-        _queueIndex = idx;
-      }
-      notifyListeners();
-    });
+        // Sync queue index with audio service
+        final current = currentSong;
+        final idx = _queue.indexWhere((s) => s.path == current?.path);
+        if (idx != -1 && idx != _queueIndex) {
+          _queueIndex = idx;
+        }
+        
+        // Update notification with current song whenever state changes
+        if (current != null) {
+          _audioServiceIntegration.updateCurrentSong(current);
+        }
+        
+        notifyListeners();
+      });
+    }
     
     await loadMusic();
   }
@@ -145,11 +157,11 @@ class MusicProvider extends ChangeNotifier {
         _queue.addAll(_songs.sublist(0, songIndex)); // Add songs before the selected one at the end
         _queueIndex = 0; // Selected song is now at index 0
         
-        await _audioService.setPlaylist(_queue, initialIndex: _queueIndex);
-        await _audioService.playSong(song);
-        
-        // Sync with audio service integration for notifications (only set the playlist once)
+        // Use the unified audio service integration
         await _audioServiceIntegration.updatePlaylist(_queue, initialIndex: _queueIndex);
+        
+        // Force sync the current song after play
+        await syncNotificationState();
       }
       
       // notifyListeners() will be called by the stream listener
@@ -160,40 +172,60 @@ class MusicProvider extends ChangeNotifier {
 
   Future<void> playPause() async {
     try {
-      await _audioService.playPause();
-      // The notification controls will be updated automatically through StrepAudioHandler
-      // notifyListeners() will be called automatically by the stream listener
+      final audioPlayer = _audioServiceIntegration.audioPlayer;
+      if (audioPlayer != null) {
+        if (audioPlayer.playing) {
+          await audioPlayer.pause();
+        } else {
+          await audioPlayer.play();
+        }
+      }
     } catch (e) {
-      _setError('Error toggling playback: $e');
+      _setError('Error toggling play/pause: $e');
     }
   }
 
   Future<void> skipToNext() async {
     try {
-      await _audioService.skipToNext();
-      // The notification controls will be updated automatically through StrepAudioHandler
-      // notifyListeners() will be called automatically by the stream listener
+      final audioPlayer = _audioServiceIntegration.audioPlayer;
+      if (audioPlayer != null && audioPlayer.hasNext) {
+        await audioPlayer.seekToNext();
+        _queueIndex = (_queueIndex + 1) % _queue.length;
+        notifyListeners();
+      }
     } catch (e) {
-      _setError('Error skipping to next song: $e');
+      _setError('Error skipping to next: $e');
     }
   }
 
   Future<void> skipToPrevious() async {
     try {
-      await _audioService.skipToPrevious();
-      // The notification controls will be updated automatically through StrepAudioHandler
-      // notifyListeners() will be called automatically by the stream listener
+      final audioPlayer = _audioServiceIntegration.audioPlayer;
+      if (audioPlayer != null && audioPlayer.hasPrevious) {
+        await audioPlayer.seekToPrevious();
+        _queueIndex = (_queueIndex - 1 + _queue.length) % _queue.length;
+        notifyListeners();
+      }
     } catch (e) {
-      _setError('Error skipping to previous song: $e');
+      _setError('Error skipping to previous: $e');
     }
   }
 
   Future<void> seek(Duration position) async {
     try {
-      await _audioService.seek(position);
-      // The notification position will be updated automatically through StrepAudioHandler
+      final audioPlayer = _audioServiceIntegration.audioPlayer;
+      if (audioPlayer != null) {
+        await audioPlayer.seek(position);
+      }
     } catch (e) {
       _setError('Error seeking: $e');
+    }
+  }
+
+  Future<void> syncNotificationState() async {
+    final currentSong = this.currentSong;
+    if (currentSong != null) {
+      await _audioServiceIntegration.updateCurrentSong(currentSong);
     }
   }
 
@@ -207,9 +239,9 @@ class MusicProvider extends ChangeNotifier {
         // Save the metadata for persistence
         await _metadataService.saveSongDetails(updatedSong);
         
-        // If this is the currently playing song, update it in the audio service
-        if (_audioService.currentSong?.path == oldSong.path) {
-          await _audioService.updateCurrentSong(updatedSong);
+        // If this is the currently playing song, update it
+        if (currentSong?.path == oldSong.path) {
+          await _audioServiceIntegration.updateCurrentSong(updatedSong);
         }
         
         notifyListeners();
@@ -229,8 +261,8 @@ class MusicProvider extends ChangeNotifier {
         
         await _metadataService.saveSongDetails(updatedSong);
         
-        if (_audioService.currentSong?.path == song.path) {
-          await _audioService.updateCurrentSong(updatedSong);
+        if (currentSong?.path == song.path) {
+          await _audioServiceIntegration.updateCurrentSong(updatedSong);
         }
         
         notifyListeners();
@@ -247,7 +279,7 @@ class MusicProvider extends ChangeNotifier {
       if (index == -1) return;
 
       // Check if the song to delete is currently playing
-      final isCurrentlyPlaying = _audioService.currentSong?.path == songToDelete.path;
+      final isCurrentlyPlaying = currentSong?.path == songToDelete.path;
       
       // Remove from the songs list
       _songs.removeAt(index);
@@ -272,25 +304,25 @@ class MusicProvider extends ChangeNotifier {
       // Handle audio service updates
       if (isCurrentlyPlaying) {
         // Stop the current playback
-        await _audioService.stop();
+        final audioPlayer = _audioServiceIntegration.audioPlayer;
+        if (audioPlayer != null) {
+          await audioPlayer.stop();
+        }
         
         // If there are still songs left in queue, update the playlist
         if (_queue.isNotEmpty) {
-          await _audioService.setPlaylist(_queue, initialIndex: _queueIndex);
-          // Play the next song
-          if (_queueIndex < _queue.length) {
-            await _audioService.playSong(_queue[_queueIndex]);
-          }
+          await _audioServiceIntegration.updatePlaylist(_queue, initialIndex: _queueIndex);
+          // Play the next song - the handler will automatically start playing
         } else {
           // No songs left, clear the playlist
-          await _audioService.clearPlaylist();
+          await _audioServiceIntegration.updatePlaylist([], initialIndex: 0);
         }
       } else if (_queue.isNotEmpty) {
         // Just update the playlist without changing playback
-        await _audioService.setPlaylist(_queue);
+        await _audioServiceIntegration.updatePlaylist(_queue);
       } else {
         // Queue is empty, clear audio service playlist
-        await _audioService.clearPlaylist();
+        await _audioServiceIntegration.updatePlaylist([], initialIndex: 0);
       }
       
       notifyListeners();
@@ -334,17 +366,14 @@ class MusicProvider extends ChangeNotifier {
 
     // Update the audio service playlist and play the selected song
     // Ensures the queue is in sync with the Audio Service
-    await _audioService.setPlaylist(songs);
-    if (_queue.isNotEmpty) {
-      await _audioService.playSong(_queue[_queueIndex]);
-    }
+    await _audioServiceIntegration.updatePlaylist(songs, initialIndex: startIndex);
     notifyListeners();
   }
 
   void addToQueue(Song song) {
     _queue.add(song);
     // Ensures the queue is in sync with the Audio Service
-    _audioService.setPlaylist(_queue);
+    _audioServiceIntegration.updatePlaylist(_queue);
     notifyListeners();
   }
 
@@ -355,7 +384,7 @@ class MusicProvider extends ChangeNotifier {
       _queueIndex = _queueIndex.clamp(0, _queue.length - 1);
     }
     // Ensures the queue is in sync with the Audio Service
-    _audioService.setPlaylist(_queue);
+    _audioServiceIntegration.updatePlaylist(_queue);
     notifyListeners();
   }
 
@@ -364,7 +393,7 @@ class MusicProvider extends ChangeNotifier {
       _queueIndex++;
     }
     // Ensures the queue is in sync with the Audio Service
-    _audioService.setPlaylist(_queue);
+    _audioServiceIntegration.updatePlaylist(_queue);
     notifyListeners();
   }
 
@@ -373,7 +402,7 @@ class MusicProvider extends ChangeNotifier {
       _queueIndex--;
     }
     // Ensures the queue is in sync with the Audio Service
-    _audioService.setPlaylist(_queue);
+    _audioServiceIntegration.updatePlaylist(_queue);
     notifyListeners();
   }
 
@@ -381,7 +410,7 @@ class MusicProvider extends ChangeNotifier {
     if (index >= 0 && index < _queue.length) {
       _queueIndex = index;
     // Ensures the queue is in sync with the Audio Service
-    _audioService.setPlaylist(_queue);
+    _audioServiceIntegration.updatePlaylist(_queue);
       notifyListeners();
     }
   }
@@ -412,7 +441,7 @@ class MusicProvider extends ChangeNotifier {
       _queueIndex = 0;
       
       // Clear audio service
-      await _audioService.clearPlaylist();
+      await _audioServiceIntegration.updatePlaylist([]);
       
       // Clear storage
       await _storageService.clearSongs();
@@ -430,7 +459,7 @@ class MusicProvider extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _playerStateSubscription?.cancel();
-    _audioService.dispose();
+    _positionSubscription?.cancel();
     _youtubeService.dispose();
     super.dispose();
   }
