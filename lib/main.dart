@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'theme/dracula_theme.dart';
 import 'providers/music_provider.dart';
+import 'services/download_manager_service.dart';
 import 'screens/music_list_screen.dart';
 import 'screens/splash_screen.dart';
 
@@ -14,8 +15,11 @@ class StrepApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (context) => MusicProvider(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (context) => DownloadManagerService()),
+        ChangeNotifierProvider(create: (context) => MusicProvider()),
+      ],
       child: MaterialApp(
         title: 'Strep MP3 Player',
         theme: DraculaTheme.theme,
