@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:just_audio/just_audio.dart';
 import 'package:strep_app/widgets/queue_modal.dart';
 import '../providers/music_provider.dart';
-import '../services/audio_player_service.dart';
 import '../theme/dracula_theme.dart';
 import '../widgets/song_thumbnail.dart';
 
@@ -191,10 +191,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
 
   Widget _buildProgressBar(MusicProvider musicProvider) {
     return StreamBuilder<Duration>(
-      stream: musicProvider.audioService.positionStream,
+      stream: musicProvider.positionStream,
       builder: (context, positionSnapshot) {
         return StreamBuilder<Duration?>(
-          stream: musicProvider.audioService.durationStream,
+          stream: Stream.value(musicProvider.totalDuration),
           builder: (context, durationSnapshot) {
             final position = positionSnapshot.data ?? Duration.zero;
             final duration = durationSnapshot.data ?? Duration.zero;
@@ -361,16 +361,15 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             ],
           ),
           child: StreamBuilder<PlayerState>(
-            stream: musicProvider.audioService.playerStateStream,
+            stream: musicProvider.positionStream.map((_) => musicProvider.playerState),
             builder: (context, snapshot) {
-              final currentPlayerState =
-                  snapshot.data ?? musicProvider.playerState;
+              final currentPlayerState = musicProvider.playerState;
               return IconButton(
                 onPressed: () => musicProvider.playPause(),
                 icon: Icon(
-                  currentPlayerState == PlayerState.playing
+                  currentPlayerState.playing
                       ? Icons.pause_rounded
-                      : currentPlayerState == PlayerState.loading
+                      : currentPlayerState.processingState == ProcessingState.loading
                       ? Icons.hourglass_empty_rounded
                       : Icons.play_arrow_rounded,
                   size: 42,
