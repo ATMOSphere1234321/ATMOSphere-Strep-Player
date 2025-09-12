@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import '../models/song.dart';
 import '../services/audio_service_integration.dart';
+import '../services/download_manager_service.dart';
 import '../services/music_service.dart';
 import '../services/song_metadata_service.dart';
 import '../services/song_storage_service.dart';
@@ -10,6 +11,7 @@ import '../services/yt_service_explode.dart';
 
 class MusicProvider extends ChangeNotifier {
   final AudioServiceIntegration _audioServiceIntegration = AudioServiceIntegration();
+  final DownloadManagerService _downloadManager = DownloadManagerService();
   final MusicService _musicService = MusicService();
   final SongMetadataService _metadataService = SongMetadataService();
   final SongStorageService _storageService = SongStorageService();
@@ -25,6 +27,7 @@ class MusicProvider extends ChangeNotifier {
   List<Song> get songs => _songs;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  DownloadManagerService get downloadManager => _downloadManager;
 
   // Get audio service properties directly from the integration
   Song? get currentSong => _audioServiceIntegration.currentSong;
@@ -48,6 +51,23 @@ class MusicProvider extends ChangeNotifier {
   Future<void> initialize() async {
     // Initialize audio service integration for notifications and lock screen controls
     await _audioServiceIntegration.initialize();
+    
+    // Listen to download manager changes
+    _downloadManager.addListener(() {
+      if (!_disposed) {
+        // Check for completed downloads and add them to the library
+        for (final download in _downloadManager.completedDownloads) {
+          if (download.completedSong != null) {
+            final song = download.completedSong!;
+            if (!_songs.any((s) => s.path == song.path)) {
+              _songs.add(song);
+              _downloadManager.removeDownload(download.id);
+              notifyListeners();
+            }
+          }
+        }
+      }
+    });
     
     // Listen to player state changes and notify UI
     final audioPlayer = _audioServiceIntegration.audioPlayer;
