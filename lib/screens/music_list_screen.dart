@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:just_audio/just_audio.dart';
 import '../providers/music_provider.dart';
 import '../theme/dracula_theme.dart';
-import '../services/audio_player_service.dart';
 import '../widgets/strep_icon.dart';
 import '../widgets/song_options_bottom_sheet.dart';
 import '../widgets/song_thumbnail.dart';
@@ -402,14 +402,14 @@ class _MusicListScreenState extends State<MusicListScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 StreamBuilder<PlayerState>(
-                  stream: musicProvider.audioService.playerStateStream,
+                  stream: musicProvider.positionStream.map((_) => musicProvider.playerState),
                   builder: (context, snapshot) {
-                    final currentPlayerState = snapshot.data ?? musicProvider.playerState;
+                    final currentPlayerState = musicProvider.playerState;
                     return IconButton(
                       icon: Icon(
-                        currentPlayerState == PlayerState.playing
+                        currentPlayerState.playing
                             ? Icons.pause
-                            : currentPlayerState == PlayerState.loading
+                            : currentPlayerState.processingState == ProcessingState.loading
                                 ? Icons.hourglass_empty
                                 : Icons.play_arrow,
                         color: DraculaTheme.purple,
@@ -706,9 +706,9 @@ class _MusicListScreenState extends State<MusicListScreen> {
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: StreamBuilder<PlayerState>(
-          stream: musicProvider.audioService.playerStateStream,
+          stream: musicProvider.positionStream.map((_) => musicProvider.playerState),
           builder: (context, snapshot) {
-            final currentPlayerState = snapshot.data ?? musicProvider.playerState;
+            final currentPlayerState = musicProvider.playerState;
             return Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
@@ -727,7 +727,7 @@ class _MusicListScreenState extends State<MusicListScreen> {
                 size: 56,
                 borderRadius: BorderRadius.circular(12),
                 isCurrentSong: isCurrentSong,
-                showPlayIcon: isCurrentSong && currentPlayerState == PlayerState.playing,
+                showPlayIcon: isCurrentSong && currentPlayerState.playing,
               ),
             );
           },
