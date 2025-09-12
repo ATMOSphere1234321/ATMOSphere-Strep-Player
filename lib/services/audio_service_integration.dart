@@ -1,5 +1,6 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/foundation.dart';
+import 'package:just_audio/just_audio.dart';
 import '../models/song.dart';
 import 'audio_handler_service.dart';
 
@@ -62,8 +63,10 @@ class AudioServiceIntegration {
       return;
     }
 
-    final mediaItems = songs.map((song) => songToMediaItem(song)).toList();
-    await _audioHandler?.setAudioSource(mediaItems, initialIndex: initialIndex);
+    // Use the new method that handles songs directly
+    if (_audioHandler is StrepAudioHandler) {
+      await (_audioHandler as StrepAudioHandler).setAudioSourceFromSongs(songs, initialIndex: initialIndex);
+    }
   }
 
   // Update current media item
@@ -72,6 +75,43 @@ class AudioServiceIntegration {
 
     final mediaItem = songToMediaItem(song);
     await _audioHandler?.updateMediaItem(mediaItem);
+    
+    // Also trigger the handler to update its internal state
+    if (_audioHandler is StrepAudioHandler) {
+      (_audioHandler as StrepAudioHandler).updateCurrentSong();
+    }
+  }
+
+  // Get the underlying audio player for direct access (for UI components)
+  AudioPlayer? get audioPlayer {
+    if (_audioHandler is StrepAudioHandler) {
+      return (_audioHandler as StrepAudioHandler).player;
+    }
+    return null;
+  }
+
+  // Get current song from handler
+  Song? get currentSong {
+    if (_audioHandler is StrepAudioHandler) {
+      return (_audioHandler as StrepAudioHandler).currentSong;
+    }
+    return null;
+  }
+
+  // Get current index from handler
+  int get currentIndex {
+    if (_audioHandler is StrepAudioHandler) {
+      return (_audioHandler as StrepAudioHandler).currentIndex;
+    }
+    return 0;
+  }
+
+  // Get playlist from handler
+  List<Song> get playlist {
+    if (_audioHandler is StrepAudioHandler) {
+      return (_audioHandler as StrepAudioHandler).playlist;
+    }
+    return [];
   }
 
   // Note: The following methods now delegate to AudioPlayerService through StrepAudioHandler
@@ -86,18 +126,30 @@ class AudioServiceIntegration {
     } else {
       await _audioHandler?.play();
     }
+    
+    if (_audioHandler is StrepAudioHandler) {
+      (_audioHandler as StrepAudioHandler).forceSync();
+    }
   }
 
   // Skip to next
   Future<void> skipToNext() async {
     if (!_initialized || _audioHandler == null) return;
     await _audioHandler?.skipToNext();
+    
+    if (_audioHandler is StrepAudioHandler) {
+      (_audioHandler as StrepAudioHandler).forceSync();
+    }
   }
 
   // Skip to previous
   Future<void> skipToPrevious() async {
     if (!_initialized || _audioHandler == null) return;
     await _audioHandler?.skipToPrevious();
+    
+    if (_audioHandler is StrepAudioHandler) {
+      (_audioHandler as StrepAudioHandler).forceSync();
+    }
   }
 
   // Seek
@@ -116,4 +168,8 @@ class AudioServiceIntegration {
     _audioHandler = null;
     _initialized = false;
   }
+
+  bool get isPlaying => _audioHandler?.playbackState.value.playing ?? false;
+  
+  String? get currentSongTitle => _audioHandler?.mediaItem.value?.title;
 }
