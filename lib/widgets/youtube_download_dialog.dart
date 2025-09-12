@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../theme/dracula_theme.dart';
 import '../services/yt_service_explode.dart';
+import '../providers/music_provider.dart';
 import '../models/song.dart';
 
 class YouTubeDownloadDialog extends StatefulWidget {
@@ -21,6 +24,7 @@ class _YouTubeDownloadDialogState extends State<YouTubeDownloadDialog> {
   
   bool _isLoading = false;
   bool _isDownloading = false;
+  bool _isDownloaded = false;
   double _downloadProgress = 0.0;
   VideoInfo? _videoInfo;
   String? _errorMessage;
@@ -31,9 +35,17 @@ class _YouTubeDownloadDialogState extends State<YouTubeDownloadDialog> {
     super.dispose();
   }
 
+  void _dismissKeyboard() {
+    FocusScope.of(context).unfocus();
+    SystemChannels.textInput.invokeMethod('TextInput.hide');
+  }
+
   Future<void> _getVideoInfo() async {
     final url = _urlController.text.trim();
     if (url.isEmpty) return;
+
+    // Dismiss keyboard after getting video info
+    _dismissKeyboard();
 
     setState(() {
       _isLoading = true;
@@ -70,43 +82,47 @@ class _YouTubeDownloadDialogState extends State<YouTubeDownloadDialog> {
       _errorMessage = null;
     });
 
-    final song = await _downloadService.downloadYouTubeAudio(
+    // Start background download
+    _downloadService.downloadYouTubeAudio(
       url,
       onProgress: (progress) {
-        setState(() {
-          _downloadProgress = progress;
-        });
+        if (mounted) {
+          setState(() {
+            _downloadProgress = progress;
+          });
+        }
       },
-    );
-
-    setState(() {
-      _isDownloading = false;
-    });
-
-    if (song != null) {
-      widget.onSongDownloaded(song);
+    ).then((song) {
       if (mounted) {
-        Navigator.of(context).pop();
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Downloaded: ${song.title}',
-              style: TextStyle(color: DraculaTheme.background),
+        setState(() {
+          _isDownloading = false;
+          _isDownloaded = song != null;
+        });
+
+        if (song != null) {
+          widget.onSongDownloaded(song);
+          
+          // Show success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Downloaded: ${song.title}',
+                style: TextStyle(color: DraculaTheme.background),
+              ),
+              backgroundColor: DraculaTheme.green,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
-            backgroundColor: DraculaTheme.green,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-        );
+          );
+        } else {
+          setState(() {
+            _errorMessage = 'Failed to download audio';
+          });
+        }
       }
-    } else {
-      setState(() {
-        _errorMessage = 'Failed to download audio';
-      });
-    }
+    });
   }
 
   @override
@@ -131,48 +147,79 @@ class _YouTubeDownloadDialogState extends State<YouTubeDownloadDialog> {
             // URL Input
             TextField(
               controller: _urlController,
-              style: TextStyle(color: DraculaTheme.foreground),
+              enabled: !_isDownloaded, // Disable input after download
+              style: TextStyle(
+                color: _isDownloaded ? DraculaTheme.comment : DraculaTheme.foreground,
+              ),
               decoration: InputDecoration(
-                hintText: 'Paste YouTube URL here...',
-                hintStyle: TextStyle(color: DraculaTheme.comment),
+                hintText: _isDownloaded ? 'Download completed' : 'Paste YouTube URL here...',
+                hintStyle: TextStyle(
+                  color: _isDownloaded ? DraculaTheme.green : DraculaTheme.comment,
+                ),
                 filled: true,
-                fillColor: DraculaTheme.currentLine,
+                fillColor: _isDownloaded 
+                  ? DraculaTheme.green.withValues(alpha: 0.1)
+                  : DraculaTheme.currentLine,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide.none,
+                  borderSide: BorderSide(
+                    color: _isDownloaded ? DraculaTheme.green : Colors.transparent,
+                    width: _isDownloaded ? 2 : 0,
+                  ),
                 ),
-                prefixIcon: Icon(Icons.link, color: DraculaTheme.purple),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(
+                    color: _isDownloaded ? DraculaTheme.green : Colors.transparent,
+                    width: _isDownloaded ? 2 : 0,
+                  ),
+                ),
+                disabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(
+                    color: DraculaTheme.green.withValues(alpha: 0.6),
+                    width: 2,
+                  ),
+                ),
+                prefixIcon: Icon(
+                  _isDownloaded ? Icons.check_circle : Icons.link,
+                  color: _isDownloaded ? DraculaTheme.green : DraculaTheme.purple,
+                ),
+                suffixIcon: _isDownloaded 
+                  ? Icon(Icons.download_done, color: DraculaTheme.green)
+                  : null,
               ),
-              onSubmitted: (_) => _getVideoInfo(),
+              onSubmitted: _isDownloaded ? null : (_) => _getVideoInfo(),
             ),
             
             const SizedBox(height: 16),
             
             // Get Info Button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _isLoading ? null : _getVideoInfo,
-                icon: _isLoading 
-                  ? SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: DraculaTheme.background,
-                      ),
-                    )
-                  : Icon(Icons.info_outline),
-                label: Text(_isLoading ? 'Getting info...' : 'Get Video Info'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: DraculaTheme.purple,
-                  foregroundColor: DraculaTheme.background,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+            if (!_isDownloaded)
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _isLoading ? null : _getVideoInfo,
+                  icon: _isLoading 
+                    ? SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: DraculaTheme.background,
+                        ),
+                      )
+                    : Icon(Icons.info_outline),
+                  label: Text(_isLoading ? 'Getting info...' : 'Get Video Info'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: DraculaTheme.purple,
+                    foregroundColor: DraculaTheme.background,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
                 ),
               ),
-            ),
 
             // Error Message
             if (_errorMessage != null) ...[
@@ -245,31 +292,107 @@ class _YouTubeDownloadDialogState extends State<YouTubeDownloadDialog> {
               
               const SizedBox(height: 16),
               
-              // Download Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: _isDownloading ? null : _downloadAudio,
-                  icon: _isDownloading 
-                    ? SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: DraculaTheme.background,
-                        ),
-                      )
-                    : Icon(Icons.download),
-                  label: Text(_isDownloading ? 'Downloading...' : 'Download Audio'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: DraculaTheme.green,
-                    foregroundColor: DraculaTheme.background,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+              // Download Buttons
+              if (!_isDownloaded) ...[
+                // Regular Download Button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _isDownloading ? null : _downloadAudio,
+                    icon: _isDownloading 
+                      ? SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: DraculaTheme.background,
+                          ),
+                        )
+                      : Icon(Icons.download),
+                    label: Text(_isDownloading ? 'Downloading...' : 'Download Audio'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: DraculaTheme.green,
+                      foregroundColor: DraculaTheme.background,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                   ),
                 ),
-              ),
+                
+                const SizedBox(height: 8),
+                
+                // Background Download Button
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _isDownloading ? null : () {
+                      final musicProvider = Provider.of<MusicProvider>(context, listen: false);
+                      
+                      // Start background download
+                      musicProvider.downloadManager.startDownload(
+                        url: _urlController.text.trim(),
+                        title: _videoInfo!.title,
+                        artist: _videoInfo!.author,
+                        thumbnailUrl: null,
+                      );
+                      
+                      Navigator.of(context).pop();
+                      
+                      // Show toast that download started
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Download started in background: ${_videoInfo!.title}',
+                            style: TextStyle(color: DraculaTheme.background),
+                          ),
+                          backgroundColor: DraculaTheme.cyan,
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          duration: Duration(seconds: 3),
+                        ),
+                      );
+                    },
+                    icon: Icon(Icons.cloud_download),
+                    label: Text('Download in Background'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: DraculaTheme.cyan,
+                      side: BorderSide(color: DraculaTheme.cyan),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ),
+              ] else ...[
+                // Downloaded status
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: DraculaTheme.green.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: DraculaTheme.green.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.check_circle, color: DraculaTheme.green),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Download completed successfully!',
+                          style: TextStyle(
+                            color: DraculaTheme.green,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               
               // Download Progress
               if (_isDownloading) ...[
@@ -294,13 +417,56 @@ class _YouTubeDownloadDialogState extends State<YouTubeDownloadDialog> {
         ),
       ),
       actions: [
-        TextButton(
-          onPressed: _isDownloading ? null : () => Navigator.of(context).pop(),
-          child: Text(
-            'Cancel',
-            style: TextStyle(color: DraculaTheme.comment),
+        if (_isDownloading && !_isDownloaded) ...[
+          // Cancel download button
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Download continuing in background...',
+                    style: TextStyle(color: DraculaTheme.background),
+                  ),
+                  backgroundColor: DraculaTheme.cyan,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              );
+            },
+            child: Text(
+              'Continue in Background',
+              style: TextStyle(color: DraculaTheme.cyan),
+            ),
           ),
-        ),
+        ] else ...[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(
+              _isDownloaded ? 'Close' : 'Cancel',
+              style: TextStyle(color: DraculaTheme.comment),
+            ),
+          ),
+        ],
+        if (_isDownloaded) ...[
+          TextButton(
+            onPressed: () {
+              // Reset for new download
+              setState(() {
+                _isDownloaded = false;
+                _videoInfo = null;
+                _urlController.clear();
+                _errorMessage = null;
+              });
+            },
+            child: Text(
+              'Download Another',
+              style: TextStyle(color: DraculaTheme.purple),
+            ),
+          ),
+        ],
       ],
     );
   }
