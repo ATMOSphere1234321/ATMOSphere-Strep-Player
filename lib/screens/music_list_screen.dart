@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:just_audio/just_audio.dart';
 import '../providers/music_provider.dart';
+import '../services/download_manager_service.dart';
 import '../theme/dracula_theme.dart';
 import '../widgets/strep_icon.dart';
 import '../widgets/song_options_bottom_sheet.dart';
@@ -493,6 +494,9 @@ class _MusicListScreenState extends State<MusicListScreen> {
   }
 
   Widget _buildAllSongsTab(MusicProvider musicProvider) {
+    final activeDownloads = musicProvider.downloadManager.activeDownloads;
+    final totalItems = musicProvider.songs.length + activeDownloads.length;
+    
     return Column(
       children: [
         // Song count header
@@ -500,20 +504,32 @@ class _MusicListScreenState extends State<MusicListScreen> {
           width: double.infinity,
           padding: const EdgeInsets.all(16),
           child: Text(
-            '${musicProvider.songs.length} songs',
+            '${musicProvider.songs.length} songs${activeDownloads.isNotEmpty ? ' • ${activeDownloads.length} downloading' : ''}',
             style: TextStyle(
               color: DraculaTheme.comment,
               fontSize: 16,
             ),
           ),
         ),
-        // Song list
+        // Song list (including downloading items)
         Expanded(
-          child: ListView.builder(
-            itemCount: musicProvider.songs.length,
-            itemBuilder: (context, index) {
-              final song = musicProvider.songs[index];
-              return _buildSongTile(song, musicProvider);
+          child: Consumer<DownloadManagerService>(
+            builder: (context, downloadManager, child) {
+              return ListView.builder(
+                itemCount: totalItems,
+                itemBuilder: (context, index) {
+                  // Show downloading items first
+                  if (index < activeDownloads.length) {
+                    final downloadItem = activeDownloads[index];
+                    return _buildDownloadTile(downloadItem, musicProvider);
+                  }
+                  
+                  // Then show regular songs
+                  final songIndex = index - activeDownloads.length;
+                  final song = musicProvider.songs[songIndex];
+                  return _buildSongTile(song, musicProvider);
+                },
+              );
             },
           ),
         ),
@@ -665,6 +681,170 @@ class _MusicListScreenState extends State<MusicListScreen> {
     );
   }
 
+  Widget _buildDownloadTile(downloadItem, MusicProvider musicProvider, {double padding = 16.0}) {
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: padding, vertical: 6),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            DraculaTheme.cyan.withValues(alpha: 0.1),
+            DraculaTheme.purple.withValues(alpha: 0.05),
+          ],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: DraculaTheme.cyan.withValues(alpha: 0.4),
+          width: 2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: DraculaTheme.cyan.withValues(alpha: 0.2),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            color: DraculaTheme.cyan.withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: DraculaTheme.cyan.withValues(alpha: 0.4),
+              width: 2,
+            ),
+          ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Icon(
+                Icons.cloud_download,
+                color: DraculaTheme.cyan,
+                size: 24,
+              ),
+              Positioned(
+                bottom: 4,
+                right: 4,
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: DraculaTheme.background,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '${(downloadItem.progress * 100).toInt()}%',
+                    style: TextStyle(
+                      color: DraculaTheme.cyan,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        title: Text(
+          downloadItem.title,
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
+            color: DraculaTheme.cyan,
+            letterSpacing: 0.2,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                downloadItem.artist,
+                style: TextStyle(
+                  color: DraculaTheme.comment,
+                  fontSize: 14,
+                  letterSpacing: 0.1,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(height: 8),
+            // Progress bar
+            LinearProgressIndicator(
+              value: downloadItem.progress,
+              backgroundColor: DraculaTheme.currentLine.withValues(alpha: 0.5),
+              valueColor: AlwaysStoppedAnimation<Color>(DraculaTheme.cyan),
+              minHeight: 4,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              downloadItem.status == DownloadStatus.downloading 
+                ? 'Downloading... ${(downloadItem.progress * 100).toInt()}%'
+                : downloadItem.status == DownloadStatus.queued
+                  ? 'Queued for download'
+                  : downloadItem.status == DownloadStatus.failed
+                    ? 'Download failed'
+                    : downloadItem.status == DownloadStatus.cancelled
+                      ? 'Download cancelled'
+                      : 'Unknown status',
+              style: TextStyle(
+                color: DraculaTheme.cyan.withValues(alpha: 0.8),
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+        trailing: Container(
+          decoration: BoxDecoration(
+            color: DraculaTheme.currentLine.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: IconButton(
+            icon: Icon(
+              Icons.cancel,
+              color: DraculaTheme.red,
+              size: 20,
+            ),
+            onPressed: () {
+              musicProvider.downloadManager.cancelDownload(downloadItem.id);
+            },
+            tooltip: 'Cancel Download',
+          ),
+        ),
+        selected: false,
+        selectedTileColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        onTap: () {
+          // Show download details or options
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Download in progress: ${downloadItem.title}',
+                style: TextStyle(color: DraculaTheme.background),
+              ),
+              backgroundColor: DraculaTheme.cyan,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildSongTile(dynamic song, MusicProvider musicProvider, {double padding = 16.0}) {
     final isCurrentSong = musicProvider.currentSong == song;
     
@@ -774,7 +954,6 @@ class _MusicListScreenState extends State<MusicListScreen> {
           borderRadius: BorderRadius.circular(16),
         ),
         onTap: () {
-          final isCurrentSong = musicProvider.currentSong == song;
           if (isCurrentSong) {
             musicProvider.playPause();
           } else {
