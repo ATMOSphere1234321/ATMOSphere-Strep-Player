@@ -22,7 +22,7 @@
     <uses-permission android:name="android.permission.CAMERA" />
     
     <application
-        android:label="strep_app"
+        android:label="ATMOSphere Strep Player"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon"
         android:enableOnBackInvokedCallback="true">
