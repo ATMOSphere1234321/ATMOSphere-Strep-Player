@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>README</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+    /* CSS for syntax highlighting */
+    html { -webkit-text-size-adjust: 100%; }
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { color: #008000; } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { color: #008000; font-weight: bold; } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">README</h1>
+</header>
+<h1 id="apk-beta-release">APK Beta Release</h1>
+<p><a
+href="https://github.com/lucifron28/strep_app/raw/refs/heads/main/build/app/outputs/flutter-apk/Strep.apk">Download
+the latest beta APK here</a></p>
+<h1 id="strep-music-player">Strep Music Player</h1>
+<p><strong>Strep</strong> is a modern, open-source music player for
+Android built with Flutter. This project is <strong>still under
+development</strong>. An APK release will be available when the app is
+feature-complete.</p>
+<h2 id="overview">Overview</h2>
+<p>Strep is a modern, open-source music player for Android built with
+Flutter. It supports local audio playback, YouTube audio downloads,
+queue management, and a beautiful Dracula-inspired UI. The app is
+designed for speed, reliability, and customization.</p>
+<h2 id="features">Features</h2>
+<ul>
+<li><strong>Local Audio Playback:</strong> Play music files stored on
+your device (supports MP3, M4A, WEBM, and other common formats).</li>
+<li><strong>YouTube Audio Download:</strong> Download audio from YouTube
+links directly in the app using <code>youtube_explode_dart</code>.</li>
+<li><strong>Music Library:</strong> Import, browse, and manage your
+songs with album, artist, and all-songs views.</li>
+<li><strong>Queue &amp; Now Playing:</strong> Spotify-style queue
+management and a full-featured now playing screen.</li>
+<li><strong>Mini Player:</strong> Persistent mini player for quick
+controls and navigation.</li>
+<li><strong>Edit &amp; Delete:</strong> Edit song metadata and remove
+songs from your library.</li>
+<li><strong>Custom Thumbnails:</strong> Set custom artwork for your
+songs.</li>
+<li><strong>Persistent Storage:</strong> Your library and playback state
+are saved between sessions.</li>
+<li><strong>File Picker:</strong> Import music from any location on your
+device.</li>
+</ul>
+<h2 id="codebase-structure">Codebase Structure</h2>
+<pre><code>lib/
+   main.dart                  # App entry point, theme, and navigation
+   models/
+      song.dart                # Song model and metadata
+   providers/
+      music_provider.dart      # State management for music, queue, and playback
+   services/
+      audio_player_service.dart    # Audio playback and queue logic (just_audio)
+      yt_service_explode.dart      # YouTube audio download and info
+      music_service.dart           # File system and permission helpers
+      song_metadata_service.dart   # Metadata editing and persistence
+      song_storage_service.dart    # Persistent storage for song list
+      image_service.dart           # Album art and thumbnail helpers
+   screens/
+      music_list_screen.dart   # Main UI: song list, albums, artists, mini player
+      now_playing_screen.dart  # Full now playing screen (not shown above)
+   widgets/
+      youtube_download_dialog.dart # Dialog for YouTube downloads
+      song_options_bottom_sheet.dart # Edit/delete song options
+      song_thumbnail.dart      # Song artwork widget
+      vinyl_disk.dart          # SVG vinyl disk backgrounds
+      strep_icon.dart          # App icon widget
+      queue_modal.dart         # Queue management modal
+   theme/
+      dracula_theme.dart       # Dracula color palette and theme
+   utils/
+      debug_logger.dart        # Debug logging utility
+test/
+   widget_test.dart           # Widget tests</code></pre>
+<h2 id="key-components">Key Components</h2>
+<ul>
+<li><strong>main.dart</strong>: App entry, theme, and navigation.
+Initializes the music provider and shows the splash screen or main
+UI.</li>
+<li><strong>MusicProvider</strong>: Central state manager for songs,
+queue, and playback. Handles loading, importing, editing, and deleting
+songs, as well as YouTube downloads.</li>
+<li><strong>AudioPlayerService</strong>: Handles all playback logic,
+queue management, and persistent playback state using just_audio.</li>
+<li><strong>YouTubeDownloadService</strong>: Downloads audio from
+YouTube links and creates Song objects for the library.</li>
+<li><strong>UI Screens</strong>: Main music list, albums, artists, and
+now playing screens. Includes a persistent mini player and queue
+modal.</li>
+<li><strong>Widgets</strong>: Modular UI components for song tiles,
+thumbnails, dialogs, and options.</li>
+<li><strong>Theme</strong>: Dracula-inspired dark theme with custom
+gradients and colors.</li>
+</ul>
+<h2 id="usage">Usage</h2>
+<ul>
+<li>MP3</li>
+<li>M4A</li>
+<li>WEBM (YouTube audio)</li>
+<li>Most common audio formats supported by your device</li>
+</ul>
+<h2 id="getting-started">Getting Started</h2>
+<h3 id="prerequisites">Prerequisites</h3>
+<ul>
+<li>Flutter SDK (3.10.0 or higher recommended)</li>
+<li>Android Studio or VS Code with Flutter extensions</li>
+<li>Android device or emulator (API 21+)</li>
+</ul>
+<h3 id="installation">Installation</h3>
+<ol type="1">
+<li><strong>Clone the repository:</strong>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode sh"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> clone https://github.com/lucifron28/strep_app.git</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> strep_app</span></code></pre></div></li>
+<li><strong>Install dependencies:</strong>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode sh"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">flutter</span> pub get</span></code></pre></div></li>
+<li><strong>Run the app:</strong>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode sh"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ex">flutter</span> run</span></code></pre></div></li>
+</ol>
+<h2 id="usage-1">Usage</h2>
+<ul>
+<li><strong>Import Music:</strong> Use the add (+) button to import
+audio files.</li>
+<li><strong>Download from YouTube:</strong> Paste a YouTube link to
+download and add audio to your library.</li>
+<li><strong>Browse Library:</strong> Switch between All Songs, Albums,
+and Artists tabs.</li>
+<li><strong>Play Music:</strong> Tap any song to start playback. Use the
+mini player or now playing screen for controls.</li>
+<li><strong>Manage Queue:</strong> Tap the queue button in the now
+playing screen to view and manage your up-next list.</li>
+</ul>
+<h2 id="how-to-use">How to Use</h2>
+<ul>
+<li><strong>Import Music</strong>: Tap the add (+) button to import
+audio files from your device.</li>
+<li><strong>Download from YouTube</strong>: Tap the YouTube icon, paste
+a link, and download audio directly into your library.</li>
+<li><strong>Browse Library</strong>: Switch between All Songs, Albums,
+and Artists tabs.</li>
+<li><strong>Play Music</strong>: Tap a song to play. Tapping the
+currently playing song toggles pause/play. Use the mini player or now
+playing screen for controls.</li>
+<li><strong>Edit/Delete</strong>: Long-press or use the options menu on
+a song to edit metadata or remove it from your library.</li>
+<li><strong>Queue Management</strong>: Use the queue modal to view and
+reorder upcoming songs.</li>
+</ul>
+<h2 id="permissions">Permissions</h2>
+<ul>
+<li>Storage/media access (to read and write music files)</li>
+<li>Internet (for YouTube downloads)</li>
+<li>Foreground service (for background playback)</li>
+</ul>
+<h2 id="development--contribution">Development &amp; Contribution</h2>
+<ul>
+<li>This project is actively developed. Features and UI may change.</li>
+<li>To contribute, open an issue or pull request on GitHub.</li>
+</ul>
+<h2 id="future-improvements">Future Improvements</h2>
+<ul>
+<li>Notification player controls and lock screen controls</li>
+<li>Android Auto and Wear OS support</li>
+<li>Lyrics display and lyrics search</li>
+<li>Smart playlists and favorites</li>
+<li>Folder-based browsing</li>
+<li>Gapless playback and crossfade</li>
+<li>Audio effects (equalizer, bass boost)</li>
+<li>More file format support (FLAC, OGG, etc.)</li>
+<li>Improved queue management (drag-and-drop, multi-select)</li>
+<li>Custom themes and accent colors</li>
+<li>Backup and restore library</li>
+<li>In-app update notifications</li>
+<li>Better error handling and user feedback</li>
+<li>Performance optimizations for large libraries</li>
+<li>More robust YouTube download options (quality selection,
+playlists)</li>
+</ul>
+<hr />
+<ul>
+<li>This project is <strong>actively being developed</strong>.</li>
+<li>Features and UI are subject to change.</li>
+<li>APK will be released when the app is ready for public use.</li>
+</ul>
+<h2 id="contributing">Contributing</h2>
+<p>Contributions are welcome! Please open an issue or pull request.</p>
+<h2 id="license">License</h2>
+<p>MIT License</p>
+</body>
+</html>
